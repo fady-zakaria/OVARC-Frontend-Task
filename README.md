@@ -20,6 +20,11 @@
    ```bash
    npm run build
    ```  
+4. **Start the Mock Server**:
+   ```bash
+   npm run server
+   ```  
+
 
 ## Features
 1. **Shop Page**: 
