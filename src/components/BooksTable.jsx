@@ -1,4 +1,3 @@
-// src/components/BooksTable.jsx
 import React, { useMemo } from 'react';
 import Table from './Table/Table';
 import TableActions from './ActionButton/TableActions';
@@ -8,55 +7,94 @@ const BooksTable = ({
   authors,
   editingRowId,
   setEditingRowId,
-  editName,
-  setEditName,
+  editValue,
+  setEditValue,
   setBooks,
   deleteBook,
-  columnsConfig = ['id', 'name', 'pages', 'author', 'actions'], // Default columns
+  editableColumn = 'name',
+  columnsConfig = ['id', 'name', 'pages', 'author', 'price', 'actions'],
 }) => {
   // Create a lookup map for authors
-  const authorMap = useMemo(() => {
-    return authors.reduce((map, author) => {
-      map[author.id] = `${author.first_name} ${author.last_name}`;
-      return map;
-    }, {});
-  }, [authors]);
+  const authorMap = useMemo(
+    () =>
+      authors?.reduce((map, a) => {
+        map[a.id] = `${a.first_name} ${a.last_name}`;
+        return map;
+      }, {}) ?? {},
+    [authors]
+  );
 
   // Enrich books with author names
-  const enrichedBooks = useMemo(() => {
-    return books.map((book) => ({
-      ...book,
-      author_name: authorMap[book.author_id] || 'Unknown Author',
-    }));
-  }, [books, authorMap]);
+  const enrichedBooks = useMemo(
+    () =>
+      books.map((b) => ({
+        ...b,
+        author_name: authorMap[b.author_id] || 'Unknown Author',
+      })),
+    [books, authorMap]
+  );
+
+  const handleEdit = (book) => {
+    setEditingRowId(book.id);
+    setEditValue(book[editableColumn] ?? ''); // name or price
+  };
+
+  const handleCancel = () => {
+    setEditingRowId(null);
+    setEditValue('');
+  };
+
+  const handleSave = (id) => {
+    setBooks((prev) =>
+      prev.map((b) =>
+        b.id === id
+          ? {
+            ...b,
+            [editableColumn]:
+              editableColumn === 'price'
+                ? Number.isNaN(parseFloat(editValue))
+                  ? b.price
+                  : parseFloat(editValue)
+                : editValue,
+          }
+          : b
+      )
+    );
+    setEditingRowId(null);
+    setEditValue('');
+  };
 
   // Define all possible columns
-  const allColumns = useMemo(
-    () => ({
-      id: { header: 'Book Id', accessorKey: 'id' },
-      name: {
-        header: 'Name',
-        accessorKey: 'name',
-        cell: ({ row }) =>
-          editingRowId === row.original.id ? (
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSave(row.original.id);
-                if (e.key === 'Escape') handleCancel();
-              }}
-              className="border border-gray-300 rounded p-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
-          ) : (
-            row.original.name
-          ),
+  const allColumns = useMemo(() => {
+    const editableCell = (key, inputType = 'text', step) => ({
+      header: key === 'name' ? 'Name' : 'Price',
+      accessorKey: key === 'name' ? 'name' : 'price',
+      cell: ({ row }) => {
+        const isEditingThisRow = editingRowId === row.original.id && editableColumn === key;
+        if (!isEditingThisRow) return row.original[key];
+        return (
+          <input
+            type={inputType}
+            step={step}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSave(row.original.id);
+              if (e.key === 'Escape') handleCancel();
+            }}
+            className="border border-gray-300 rounded p-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+        );
       },
+    });
+
+    return {
+      id: { header: 'Book Id', accessorKey: 'id' },
+      name: editableCell('name', 'text'),
       pages: { header: 'Pages', accessorKey: 'page_count' },
       author: { header: 'Author', accessorKey: 'author_name' },
-      price: { header: 'Price', accessorKey: 'price' },
+      price: editableCell('price', 'number', '0.01'),
       actions: {
         header: 'Actions',
         id: 'actions',
@@ -72,37 +110,13 @@ const BooksTable = ({
           />
         ),
       },
-    }),
-    [editingRowId, editName]
+    };
+  }, [editingRowId, editableColumn, editValue, setEditValue, handleSave, handleCancel, handleEdit, deleteBook]);
+
+  const columns = useMemo(
+    () => columnsConfig.map((c) => allColumns[c]).filter(Boolean),
+    [columnsConfig, allColumns]
   );
-
-  // Select columns based on columnsConfig
-  const columns = useMemo(() => {
-    return columnsConfig.map((colKey) => allColumns[colKey]).filter(Boolean);
-  }, [columnsConfig, allColumns]);
-
-  // Handle editing
-  const handleEdit = (book) => {
-    setEditingRowId(book.id);
-    setEditName(book.name);
-  };
-
-  // Save edited name
-  const handleSave = (id) => {
-    setBooks(
-      books.map((book) =>
-        book.id === id ? { ...book, name: editName } : book
-      )
-    );
-    setEditingRowId(null);
-    setEditName('');
-  };
-
-  // Cancel editing
-  const handleCancel = () => {
-    setEditingRowId(null);
-    setEditName('');
-  };
 
   return <Table data={enrichedBooks} columns={columns} />;
 };

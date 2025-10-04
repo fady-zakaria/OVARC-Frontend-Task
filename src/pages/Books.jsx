@@ -84,10 +84,12 @@ const Books = () => {
           authors={authors}
           editingRowId={editingRowId}
           setEditingRowId={setEditingRowId}
-          editName={editName}
-          setEditName={setEditName}
+          editValue={editName}
+          setEditValue={setEditName}
           setBooks={setBooks}
           deleteBook={deleteBook}
+          editableColumn="name"
+          columnsConfig={['id', 'name', 'pages', 'author', 'actions']}
         />
       ) : (
         <Loading />
